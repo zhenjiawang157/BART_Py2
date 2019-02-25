@@ -37,7 +37,7 @@ def get_read_positions(positions,regions,val,fragment_size):
     '''
     # default fragment_size = 150
     if fragment_size >= 0:
-        shift = int(round(fragment_size*0.5))	
+        shift = int(round(fragment_size/2))	
         for chrom in regions.keys():
             if chrom not in positions:
                 positions[chrom]=[]
@@ -49,7 +49,7 @@ def get_read_positions(positions,regions,val,fragment_size):
                 positions[chrom]=[]
             for inner in regions[chrom].keys():
                 for outer in regions[chrom][inner]:
-                    shift = int(abs(outer-inner)*0.5)	
+                    shift = int(abs(outer-inner)/2)	
                     positions[chrom].append(outer+shift*val)
     return positions   
 	        	    
@@ -105,7 +105,9 @@ def read_count_on_DHS(args):
         if chrom in positions:
             #assert DHS_id not in counting
             nums = get_count_on_DHS(start,end,positions[chrom])
-            counting[DHS_id]= round(nums*1000000000/(total*1000.0),3)
+            counting[DHS_id]= round(nums*1000000000/(total*1000),3)
+        else:
+            counting[DHS_id] = 0.0
         line = Dfile.readline()
     Dfile.close()
     return counting

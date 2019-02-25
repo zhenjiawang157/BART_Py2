@@ -21,7 +21,7 @@ import configparser
 try:
     import BART
 except:
-    sys.path.append(os.path.join(os.path.dirname(__file__),"../"))
+    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),"../"))
     import BART
     
 # def output_version(ctx,param,value):
@@ -88,6 +88,9 @@ def add_geneset_parser( subparsers ):
     group_input.add_argument('-i', '--infile', action = 'store', type = str,dest = 'infile', required = True, help = 'Input file, the xxx_enhancer_prediction.txt profile generated from MARGE.', metavar = '<file>')
     #group_input.add_argument('-n', '--outname', action = 'store', type = str,dest = 'outname', help = 'outdir of the final tf_auc files', metavar = '<dir>')
     #group_input.add_argument('-d', '--divide', action = 'store', type = int,dest = 'divide', help = 'number of enhancer files run in a same time', metavar = '<divide>',default=0)
+    # This is added when the input is auc.txt and do not need to calculate roc-auc again.
+    #group_input.add_argument('--auc', dest = 'auc', action = 'store_true', default = False, help = 'If true, the input should be the auc.txt file')
+
     add_species_option(group_input)
     add_tf_option(group_input)
     add_processes_option(group_input)
@@ -105,7 +108,7 @@ def add_profile_parser( subparsers ):
     """
     Add main function 'profile' argument parsers.
     """
-    argparser_profile = subparsers.add_parser("profile", help="Given a ChIP-seq file (bed or bam format mapped reads), predict transcription factors whose binding patterns associates with the input ChIP-seq profile.")
+    argparser_profile = subparsers.add_parser("profile", help="Given a ChIP-seq file (bed or bam format mapped reads), predict transcription factors whose binding pattern associates with the input ChIP-seq profile.")
     #argparser_profile.add_argument()
     #add_outdir_option(argparser_profile)
     

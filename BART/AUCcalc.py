@@ -13,6 +13,7 @@ under the terms of the BSD License.
 
 '''
 
+from __future__ import division
 import os,sys,os.path
 import argparse,time
 import configparser
@@ -21,7 +22,7 @@ import multiprocessing
 from BART.StatTest import stat_test
 from BART.OptValidator import opt_validate,conf_validate
 from BART.ReadCount import read_count_on_DHS
-
+import bz2
 
 def get_file(filedir,match):
     mark = re.compile(match)
@@ -55,9 +56,14 @@ def get_position_list(margefile):
 def get_match_list(tf, tfdir,positions):
     '''
     Return the binding info on DHS
-    '''
-    fname = tf+'_DHS_01.txt'
-    tf = open(os.path.join(tfdir,fname), 'rb') 
+    '''   
+    ## .txt format
+#     fname = tf+'_DHS_01.txt'
+#     tf = open(os.path.join(tfdir,fname), 'rb') 
+#     lines = tf.raw.read()
+    ## .bz2 format
+    fname = tf+'_DHS_01.txt.bz2'
+    tf = bz2.BZ2File(os.path.join(tfdir,fname),'r')
     lines = tf.read()
     match = [ord(lines[2*position-2])-ord('0') for position in positions]
     tf.close()
@@ -65,6 +71,7 @@ def get_match_list(tf, tfdir,positions):
 
 
 def partion(match): 
+ 
     sub_t = 0
     list_t = []
     list_f = []
@@ -80,8 +87,10 @@ def partion(match):
     sub_t = sum(match[groups*groupsize:])
     sub_f = total -groups*groupsize-sub_t
     list_t.append(sub_t) 
-    list_f.append(sub_f)    
+    list_f.append(sub_f)   
+ 
     return total, list_t, list_f
+    
 
   
 def roc_auc(total, list_t, list_f): 
@@ -93,50 +102,66 @@ def roc_auc(total, list_t, list_f):
         list_x.append(list_f[i]+list_x[i])
         list_y.append(list_t[i]+list_y[i])
     total_t = list_y[-1]
-    list_x = [float(i)/(total - total_t) for i in list_x]
-    list_y = [float(i)/total_t for i in list_y]
+    list_x = [i/(total - total_t) for i in list_x]
+    list_y = [i/total_t for i in list_y]
     
     auc = 0.0
     for i in range(1,len(list_x)):
         width = list_x[i]-list_x[i-1]
-        height = (list_y[i]+list_y[i-1])*0.5
+        height = (list_y[i]+list_y[i-1])/2
         auc += height*width
-    #print(list_x,list_y)
+
     return list_x, list_y, auc
 
 def cal_auc_for_tf(tf_p):
     tf,tfdir,positions = tf_p
+#    time1 = time.time()    
     match = get_match_list(tf,tfdir,positions)
     (t, lt, lf) = partion(match)
     (list_x, list_y, auc) = roc_auc(t, lt,lf)
+#    time2 = time.time()
+#    print(time2-time1)
     return tf,auc
 
 def run(options):
 
     args = opt_validate(options)
     tfs = get_file(args.tfdir,'DHS_01')
-    #print(tfs)
+    
     if len(tfs) == 0:
         sys.stderr.write('Please specify correct directory of TF binding profiles!') 
         sys.exit(1)   
-    
     try:
         os.makedirs(args.outdir)
     except:
-        sys.exit('Output directory: {} could not be created.'.format(args.outdir))
-    #print(args) 
+        sys.exit('Output directory: {} already exist, please select another directory.'.format(args.outdir))
+
+    # This part is for the auc.txt input
+    #if args.auc:
+    #    AUCs = {}
+    #    with open(args.infile,'r') as auc_infile:
+    #        for auc_line in auc_infile.readlines():
+    #            auc_info = auc_line.strip().split()
+    #            AUCs[auc_info[0]] = float(auc_info[-1])
+    #    #print(AUCs)
+    #    stat_test(AUCs,args)
+    #    exit(0)
+    # print(args,'\n') 
+    
     if args.subcommand_name == 'geneset':
         print('Prediction starts...\n\nRank all DHS...\n')
         margefile = args.infile    
         positions = get_position_list(args.infile)   
         positions = [int(i) for i in positions]
+        #print(type(positions[1]));exit(0)
     elif args.subcommand_name == 'profile':
         print('Start mapping the {} file...\n'.format(args.format.upper()))
-        counting = read_count_on_DHS(args)
+        counting = read_count_on_DHS(args)      
         positions = sorted(counting.keys(),key=counting.get,reverse=True)
         positions = [int(i) for i in positions]
-        print('Prediction starts...\n\nRank all DHS...\n')
         #print([[i,counting[i]] for i in positions[:30]])
+        print('Prediction starts...\n\nRank all DHS...\n')
+
     if len(positions) == 0:
         sys.stderr.write('Input file might not with right format!\n')
         sys.exit(1)
@@ -144,10 +169,11 @@ def run(options):
     # output file of AUC-ROC values for all TFs    
     aucfile = args.outdir+os.sep+args.ofilename+'_auc.txt'
     
-    sys.stdout.write("Calculating the ROC-AUC Values for all transcription factors:\n\n")
-    #print(args)
+    sys.stdout.write("Calculating ROC-AUC values for all transcription factors:\n\n")
+    print(args)
 
     tf_ps = [(tf,args.tfdir,positions) for tf in tfs]
+    print(len(tf_ps),'#TF datasets')###########
     AUCs = {}
     # always multiprocessing
     if args.processes:  
@@ -160,10 +186,9 @@ def run(options):
         #import tqdm  ##pbar
         #pbar = tqdm.tqdm(total=total) ##pbar
         #last=total ##pbar
-        
+         
         while not tf_aucs.ready(): # print percentage of work has been done
-            remaining=tf_aucs._number_left  
-            #print(remaining)          
+            remaining=tf_aucs._number_left            
             #pbar.update(last-remaining) ##pbar
             #last=remaining ##pbar            
             sys.stdout.write('\n  Processing...{:.1f}% finished'.format(100*(total-remaining)/total)) ##print
@@ -171,7 +196,8 @@ def run(options):
             while not tf_aucs.ready() and i<24:
                 sys.stdout.write('.')
                 sys.stdout.flush()
-                i+=1 
+                #print(".",end='',flush=True) for py3
+                i+=1
                 time.sleep(5)
         
         #pbar.update(remaining) ##pbar

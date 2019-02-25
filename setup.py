@@ -1,3 +1,4 @@
+# Time-stamp: <2017-08-10>
 '''
 Copyright (c) 2017, 2018 Chongzhi Zang, Zhenjia Wang <zhenjia@virginia.edu>
 
@@ -21,15 +22,16 @@ import BART
 
 
 def main():
-    if float(sys.version[:3])<2.7:
-        sys.stderr.write("CRITICAL: Python version must be higher than or equal to 2.7!\n")
+    if float(sys.version[:3])>3.0:
+        sys.stderr.write("CRITICAL: Your python version is higher than or equal to 3.0!\n")
+        sys.stderr.write("Please down py3 version for BART!\n")
         sys.exit(1)
         
     setup(name="BART",
           version=BART.__version__,
           description="Binding Analysis for Regulatory Transcription Factors of Genes",
-          author='Zhanjia Wang',
-          author_email='zhenjia@virginia.edu',
+          author='Zhanjia Wang, Chongzhi Zang',
+          author_email='zhenjia@virginia.edu, zang@virginia.edu',
           url='',
           #package_dir={'':'BART'},
           packages=find_packages(),#['BART'],
@@ -56,6 +58,7 @@ def main():
               'pandas',
               'scipy',
               'matplotlib',
+#              'bz2',
               ],
           #cmdclass = command_classes,
           

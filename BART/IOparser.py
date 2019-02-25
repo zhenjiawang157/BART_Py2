@@ -12,7 +12,6 @@ under the terms of the BSD License.
 
 '''
 
-
 import sys,io,re
 import gzip,struct
 from struct import unpack
